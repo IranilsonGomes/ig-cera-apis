@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestão de Cera Alveolada</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        amber: {
+                            50: '#fffbeb',
+                            100: '#fef3c7',
+                            500: '#f59e0b',
+                            600: '#d97706',
+                            700: '#b45309',
+                            800: '#92400e',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        @media print {
+            .no-print { display: none !important; }
+            .print-only { display: block !important; }
+            body { background: white; color: black; }
+        }
+        .print-only { display: none; }
+    </style>
+</head>
+<body class="bg-amber-50/40 text-slate-800 min-h-screen flex flex-col">
+
+    <!-- Header -->
+    <header class="bg-amber-600 text-white shadow-md no-print">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <i class="fa-solid font-bold fa-cube text-3xl text-amber-200"></i>
+                <div>
+                    <h1 class="text-xl md:text-2xl font-bold tracking-tight">Cera Tech - Gestão Alveolada</h1>
+                    <p class="text-xs text-amber-100">Controle de Entradas, Beneficiamento e Lotes</p>
+                </div>
+            </div>
+            <div class="flex items-center space-x-2">
+                <button onclick="exportData()" title="Exportar Dados" class="bg-amber-700 hover:bg-amber-800 text-xs md:text-sm px-3 py-2 rounded-lg transition flex items-center gap-1">
+                    <i class="fa-solid fa-download"></i> <span class="hidden md:inline">Exportar</span>
+                </button>
+                <label class="bg-amber-700 hover:bg-amber-800 text-xs md:text-sm px-3 py-2 rounded-lg transition flex items-center gap-1 cursor-pointer">
+                    <i class="fa-solid fa-upload"></i> <span class="hidden md:inline">Importar</span>
+                    <input type="file" id="importFile" class="hidden" accept=".json" onchange="importData(event)">
+                </label>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="max-w-7xl mx-auto px-4 py-6 flex-1 w-full no-print">
+        
+        <!-- Stat Cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <div class="bg-white p-4 rounded-xl border border-amber-100 shadow-sm flex items-center justify-between">
+                <div>
+                    <p class="text-xs text-slate-500 font-medium">Total de Lotes</p>
+                    <h3 class="text-2xl font-bold text-slate-800" id="statTotalLotes">0</h3>
+                </div>
+                <div class="w-12 h-12 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center text-xl">
+                    <i class="fa-solid fa-boxes-stacked"></i>
+                </div>
+            </div>
+            <div class="bg-white p-4 rounded-xl border border-amber-100 shadow-sm flex items-center justify-between">
+                <div>
+                    <p class="text-xs text-slate-500 font-medium">Cera Bruta Recebida</p>
+                    <h3 class="text-2xl font-bold text-amber-600" id="statTotalPeso">0,00 kg</h3>
+                </div>
+                <div class="w-12 h-12 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center text-xl">
+                    <i class="fa-solid fa-weight-hanging"></i>
+                </div>
+            </div>
+            <div class="bg-white p-4 rounded-xl border border-amber-100 shadow-sm flex items-center justify-between">
+                <div>
+                    <p class="text-xs text-slate-500 font-medium">Lâminas Produzidas</p>
+                    <h3 class="text-2xl font-bold text-emerald-600" id="statTotalLaminas">0,00 kg</h3>
+                </div>
+                <div class="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center text-xl">
+                    <i class="fa-solid fa-sheet-plastic"></i>
+                </div>
+            </div>
+            <div class="bg-white p-4 rounded-xl border border-amber-100 shadow-sm flex items-center justify-between">
+                <div>
+                    <p class="text-xs text-slate-500 font-medium">Faturamento Estimado</p>
+                    <h3 class="text-2xl font-bold text-slate-800" id="statTotalValor">R$ 0,00</h3>
+                </div>
+                <div class="w-12 h-12 bg-slate-100 text-slate-700 rounded-full flex items-center justify-center text-xl">
+                    <i class="fa-solid fa-coins"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Action Bar & Tabs -->
+        <div class="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
+            <div class="flex space-x-2 bg-slate-200/60 p-1 rounded-xl w-full sm:w-auto">
+                <button id="tabLotesBtn" onclick="switchTab('lotes')" class="flex-1 sm:flex-none px-4 py-2 rounded-lg text-sm font-semibold transition bg-white text-amber-700 shadow-sm">
+                    <i class="fa-solid fa-list mr-1"></i> Lotes Cadastrados
+                </button>
+                <button id="tabNovoBtn" onclick="openFormModal()" class="flex-1 sm:flex-none px-4 py-2 rounded-lg text-sm font-semibold transition hover:text-amber-700 text-slate-600">
+                    <i class="fa-solid fa-plus mr-1"></i> Novo Lote de Cera
+                </button>
+            </div>
+            <div class="relative w-full sm:w-64">
+                <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                <input type="text" id="searchInput" oninput="renderLotesTable()" placeholder="Buscar apicultor ou lote..." class="w-full pl-9 pr-4 py-2 text-sm bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-none">
+            </div>
+        </div>
+
+        <!-- Lotes List View -->
+        <div id="viewLotes" class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-sm text-slate-600">
+                    <thead class="bg-slate-50 text-slate-700 font-semibold uppercase text-xs border-b border-slate-100">
+                        <tr>
+                            <th class="px-4 py-3">Cód / Data</th>
+                            <th class="px-4 py-3">Apicultor</th>
+                            <th class="px-4 py-3 text-right">Peso Bruto</th>
+                            <th class="px-4 py-3 text-right">Perda Quebra</th>
+                            <th class="px-4 py-3 text-right">Peso Líquido</th>
+                            <th class="px-4 py-3 text-right">Valor Total</th>
+                            <th class="px-4 py-3 text-center">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="lotesTableBody" class="divide-y divide-slate-100">
+                        <!-- Dynamic content -->
+                    </tbody>
+                </table>
+            </div>
+            <div id="emptyState" class="p-8 text-center hidden">
+                <i class="fa-solid fa-box-open text-4xl text-slate-300 mb-2"></i>
+                <p class="text-slate-500 font-medium">Nenhum lote de cera cadastrado.</p>
+                <p class="text-xs text-slate-400 mt-1">Clique em "Novo Lote de Cera" para adicionar um lote.</p>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal Formulário (Novo/Editar Lote) -->
+    <div id="formModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden no-print">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
+            <!-- Modal Header -->
+            <div class="bg-slate-800 text-white px-6 py-4 flex justify-between items-center">
+                <h2 id="modalTitle" class="text-lg font-bold flex items-center gap-2">
+                    <i class="fa-solid fa-pen-to-square text-amber-400"></i> Editar Lote de Cera
+                </h2>
+                <button onclick="closeFormModal()" class="text-slate-400 hover:text-white text-xl">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <!-- Modal Form Body -->
+            <form id="loteForm" onsubmit="handleSaveLote(event)" class="p-6 overflow-y-auto space-y-6 flex-1">
+                <input type="hidden" id="loteId">
+
+                <!-- Dados Gerais -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Apicultor / Cliente *</label>
+                        <input type="text" id="apicultor" required placeholder="Ex: João da Silva" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Data de Entrada *</label>
+                        <input type="date" id="dataEntrada" required class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Preço Beneficiamento (R$/kg)</label>
+                        <input type="number" step="0.01" min="0" id="precoKg" value="5.00" oninput="calculateTotals()" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none">
+                    </div>
+                </div>
+
+                <!-- Configuração de Quebra / Impurezas -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 bg-amber-50/50 p-4 rounded-xl border border-amber-100">
+                    <div>
+                        <label class="block text-xs font-semibold text-amber-800 mb-1">Taxa de Quebra / Perda Padronizada (%)</label>
+                        <input type="number" step="0.1" min="0" max="100" id="taxaQuebra" value="10.0" oninput="calculateTotals()" class="w-full px-3 py-2 border border-amber-200 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none">
+                        <p class="text-[11px] text-amber-600 mt-1">Porcentagem descontada da cera bruta por impurezas.</p>
+                    </div>
+                    <div class="flex items-center justify-between px-3 py-2 bg-white rounded-lg border border-amber-200">
+                        <div>
+                            <span class="block text-xs font-semibold text-slate-500">Estimativa de Peso Líquido</span>
+                            <span id="labelPesoLiquidoEstimado" class="text-lg font-bold text-slate-800">0,00 kg</span>
+                        </div>
+                        <i class="fa-solid fa-filter text-amber-500 text-xl"></i>
+                    </div>
+                </div>
+
+                <!-- Seção Tipos de Lâminas / Pedido -->
+                <div>
+                    <div class="flex justify-between items-center mb-3">
+                        <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wide flex items-center gap-2">
+                            <i class="fa-solid fa-cubes text-amber-600"></i>
+                            Especificação de Lâminas Produzidas
+                        </h3>
+                        <button type="button" onclick="addTipoLaminaRow()" class="bg-amber-600 hover:bg-amber-700 text-white text-xs px-3 py-1.5 rounded-lg transition font-medium flex items-center gap-1">
+                            <i class="fa-solid fa-plus"></i> Adicionar Tipo de Lâmina
+                        </button>
+                    </div>
+
+                    <!-- Dynamic List of Laminas -->
+                    <div id="laminasContainer" class="space-y-3">
+                        <!-- Dynamic items will be added here -->
+                    </div>
+                </div>
+
+                <!-- Observações e Resumo de Totais -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2 border-t border-slate-100">
+                    <div class="md:col-span-2">
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Observações do Lote</label>
+                        <textarea id="observacoes" rows="3" placeholder="Ex: Cera entregue em blocos, alta pureza, pagamento pendente..." class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none"></textarea>
+                    </div>
+                    <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 flex flex-col justify-center space-y-2">
+                        <div class="flex justify-between text-xs text-slate-600">
+                            <span>Soma das Lâminas:</span>
+                            <span id="summaryPesoTotal" class="font-bold text-slate-800">0,00 kg</span>
+                        </div>
+                        <div class="flex justify-between text-xs text-slate-600">
+                            <span>Valor Beneficiamento:</span>
+                            <span id="summaryValorTotal" class="font-bold text-amber-600">R$ 0,00</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Modal Actions -->
+                <div class="flex justify-end space-x-3 pt-4 border-t border-slate-100">
+                    <button type="button" onclick="closeFormModal()" class="px-4 py-2 border border-slate-300 rounded-lg text-sm text-slate-600 hover:bg-slate-50 font-medium">Cancelar</button>
+                    <button type="submit" class="px-5 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-sm font-semibold shadow-sm transition">Salvar Lote</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- View Details Modal -->
+    <div id="detailsModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden no-print">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div class="bg-amber-600 text-white px-6 py-4 flex justify-between items-center">
+                <h3 class="text-lg font-bold flex items-center gap-2">
+                    <i class="fa-solid fa-receipt"></i> Detalhes do Lote <span id="detailLoteId"></span>
+                </h3>
+                <button onclick="closeDetailsModal()" class="text-amber-200 hover:text-white text-xl">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div id="detailsContent" class="p-6 overflow-y-auto space-y-4 flex-1 text-sm text-slate-700">
+                <!-- Filled dynamically -->
+            </div>
+            <div class="bg-slate-50 px-6 py-3 border-t border-slate-100 flex flex-wrap justify-end gap-2">
+                <button onclick="closeDetailsModal()" class="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-200 rounded-lg">Fechar</button>
+                <button onclick="shareWhatsApp()" class="px-4 py-2 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg flex items-center gap-1">
+                    <i class="fa-brands fa-whatsapp"></i> WhatsApp
+                </button>
+                <button onclick="printThermalEtiqueta()" class="px-4 py-2 text-xs font-semibold bg-slate-800 hover:bg-slate-900 text-white rounded-lg flex items-center gap-1">
+                    <i class="fa-solid fa-print"></i> Etiqueta Térmica
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Print Only Area for Thermal Labels -->
+    <div id="printArea" class="print-only p-4 text-black text-xs font-mono max-w-[80mm] mx-auto">
+        <!-- Thermal label content dynamically injected -->
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div id="toastContainer" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <script>
+        // System State
+        let lotes = [];
+        let activeDetailLote = null;
+
+        // Standard presets for wax sheets
+        const PRESETS = {
+            'Ninho': { dim: '42 x 20 cm', estQtdKg: 18 },
+            'Melgueira': { dim: '42 x 13 cm', estQtdKg: 26 },
+            'Melgueirão': { dim: '42 x 16 cm', estQtdKg: 22 },
+            'Personalizado': { dim: 'Customizado', estQtdKg: 0 }
+        };
+
+        // DOM Load Initializer
+        window.onload = function() {
+            loadLotesFromStorage();
+            renderLotesTable();
+            updateStats();
+        };
+
+        // Local Storage Sync
+        function loadLotesFromStorage() {
+            const stored = localStorage.getItem('cera_tech_lotes');
+            if (stored) {
+                try {
+                    lotes = JSON.parse(stored);
+                } catch(e) {
+                    console.error("Erro ao carregar dados", e);
+                    lotes = [];
+                }
+            } else {
+                // Initial mock data if empty
+                lotes = [
+                    {
+                        id: 'LOT-1001',
+                        apicultor: 'Carlos Eduardo',
+                        dataEntrada: '2026-10-10',
+                        precoKg: 6.00,
+                        taxaQuebra: 10.0,
+                        observacoes: 'Cera de boa qualidade, apicultor retirará no local.',
+                        laminas: [
+                            { tipo: 'Ninho', peso: 25.0, dimensoes: '42 x 20 cm' },
+                            { tipo: 'Melgueira', peso: 10.0, dimensoes: '42 x 13 cm' }
+                        ]
+                    }
+                ];
+                saveLotesToStorage();
+            }
+        }
+
+        function saveLotesToStorage() {
+            localStorage.setItem('cera_tech_lotes', JSON.stringify(lotes));
+            renderLotesTable();
+            updateStats();
+        }
+
+        // Formatters
+        function formatCurrency(val) {
+            return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val || 0);
+        }
+
+        function formatNumber(val, decimals = 2) {
+            return new Intl.NumberFormat('pt-BR', { minimumFractionDigits: decimals, maximumFractionDigits: decimals }).format(val || 0);
+        }
+
+        function formatDate(dateStr) {
+            if (!dateStr) return '';
+            const [y, m, d] = dateStr.split('-');
+            return `${d}/${m}/${y}`;
+        }
+
+        // UI Helpers
+        function showToast(msg, type = 'success') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            const bg = type === 'success' ? 'bg-emerald-600' : 'bg-red-600';
+            toast.className = `${bg} text-white px-4 py-2 rounded-lg shadow-lg text-sm flex items-center gap-2 transition-all duration-300 pointer-events-auto`;
+            toast.innerHTML = `<i class="fa-solid fa-circle-check"></i> <span>${msg}</span>`;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.classList.add('opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        // Render Main Table
+        function renderLotesTable() {
+            const tbody = document.getElementById('lotesTableBody');
+            const emptyState = document.getElementById('emptyState');
+            const query = document.getElementById('searchInput').value.toLowerCase();
+
+            const filtered = lotes.filter(l => 
+                l.apicultor.toLowerCase().includes(query) || 
+                l.id.toLowerCase().includes(query)
+            );
+
+            tbody.innerHTML = '';
+
+            if (filtered.length === 0) {
+                emptyState.classList.remove('hidden');
+                return;
+            } else {
+                emptyState.classList.add('hidden');
+            }
+
+            filtered.forEach(lote => {
+                const pesoTotalLaminas = lote.laminas.reduce((acc, item) => acc + (parseFloat(item.peso) || 0), 0);
+                const pesoBrutoCalculado = lote.taxaQuebra < 100 ? pesoTotalLaminas / (1 - (lote.taxaQuebra / 100)) : pesoTotalLaminas;
+                const perdaPeso = pesoBrutoCalculado - pesoTotalLaminas;
+                const valorTotal = pesoTotalLaminas * (lote.precoKg || 0);
+
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-amber-50/30 transition border-b border-slate-100';
+                tr.innerHTML = `
+                    <td class="px-4 py-3 font-semibold text-slate-800">
+                        <div>${lote.id}</div>
+                        <div class="text-xs text-slate-400 font-normal">${formatDate(lote.dataEntrada)}</div>
+                    </td>
+                    <td class="px-4 py-3 font-medium text-slate-700">${lote.apicultor}</td>
+                    <td class="px-4 py-3 text-right font-medium text-slate-600">${formatNumber(pesoBrutoCalculado)} kg</td>
+                    <td class="px-4 py-3 text-right text-xs text-amber-700">
+                        ${formatNumber(perdaPeso)} kg <span class="text-slate-400">(${lote.taxaQuebra}%)</span>
+                    </td>
+                    <td class="px-4 py-3 text-right font-bold text-emerald-600">${formatNumber(pesoTotalLaminas)} kg</td>
+                    <td class="px-4 py-3 text-right font-bold text-slate-800">${formatCurrency(valorTotal)}</td>
+                    <td class="px-4 py-3 text-center space-x-1">
+                        <button onclick="openDetailsModal('${lote.id}')" title="Ver Detalhes / Imprimir" class="p-1.5 hover:bg-slate-100 rounded text-slate-600 transition">
+                            <i class="fa-solid fa-eye"></i>
+                        </button>
+                        <button onclick="openFormModal('${lote.id}')" title="Editar Lote" class="p-1.5 hover:bg-amber-100 rounded text-amber-600 transition">
+                            <i class="fa-solid fa-pen-to-square"></i>
+                        </button>
+                        <button onclick="deleteLote('${lote.id}')" title="Excluir Lote" class="p-1.5 hover:bg-red-100 rounded text-red-600 transition">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // Add Dynamic Lamina Row
+        function addTipoLaminaRow(tipo = 'Ninho', peso = '', dimensoes = '') {
+            const container = document.getElementById('laminasContainer');
+            const index = Date.now() + Math.random().toString(36).substring(2, 5);
+
+            const row = document.createElement('div');
+            row.className = 'lamina-row grid grid-cols-12 gap-2 bg-slate-50 p-3 rounded-xl border border-slate-200 items-center';
+            row.id = `lamina-row-${index}`;
+
+            row.innerHTML = `
+                <div class="col-span-4 md:col-span-4">
+                    <label class="block text-[10px] uppercase font-bold text-slate-500 mb-1">Tipo de Lâmina</label>
+                    <select class="lamina-tipo w-full px-2 py-1.5 border border-slate-200 rounded-lg text-xs bg-white focus:ring-2 focus:ring-amber-500" onchange="onLaminaTipoChange(this)">
+                        <option value="Ninho" ${tipo === 'Ninho' ? 'selected' : ''}>Ninho</option>
+                        <option value="Melgueira" ${tipo === 'Melgueira' ? 'selected' : ''}>Melgueira</option>
+                        <option value="Melgueirão" ${tipo === 'Melgueirão' ? 'selected' : ''}>Melgueirão</option>
+                        <option value="Personalizado" ${tipo === 'Personalizado' ? 'selected' : ''}>Personalizado</option>
+                    </select>
+                </div>
+                <div class="col-span-4 md:col-span-3">
+                    <label class="block text-[10px] uppercase font-bold text-slate-500 mb-1">Peso Produzido (kg)</label>
+                    <input type="number" step="0.01" min="0" value="${peso}" placeholder="0.00" class="lamina-peso w-full px-2 py-1.5 border border-slate-200 rounded-lg text-xs font-semibold focus:ring-2 focus:ring-amber-500" oninput="calculateTotals()">
+                </div>
+                <div class="col-span-3 md:col-span-4">
+                    <label class="block text-[10px] uppercase font-bold text-slate-500 mb-1">Dimensões</label>
+                    <input type="text" value="${dimensoes || PRESETS[tipo]?.dim || ''}" placeholder="Ex: 42x20 cm" class="lamina-dimensoes w-full px-2 py-1.5 border border-slate-200 rounded-lg text-xs bg-white focus:ring-2 focus:ring-amber-500">
+                </div>
+                <div class="col-span-1 flex justify-end items-end pt-4">
+                    <button type="button" onclick="removeLaminaRow('${row.id}')" class="text-red-500 hover:text-red-700 p-1 rounded transition">
+                        <i class="fa-solid fa-trash"></i>
+                    </button>
+                </div>
+            `;
+
+            container.appendChild(row);
+            
+            // Recalculate totals immediately upon adding item to UI
+            calculateTotals();
+        }
+
+        function removeLaminaRow(rowId) {
+            const row = document.getElementById(rowId);
+            if (row) {
+                row.remove();
+                calculateTotals();
+            }
+        }
+
+        function onLaminaTipoChange(selectElem) {
+            const row = selectElem.closest('.lamina-row');
+            const dimInput = row.querySelector('.lamina-dimensoes');
+            const selectedTipo = selectElem.value;
+
+            if (PRESETS[selectedTipo]) {
+                dimInput.value = PRESETS[selectedTipo].dim;
+            }
+            calculateTotals();
+        }
+
+        // Live Dynamic Calculation of Totals
+        function calculateTotals() {
+            const pesoInputs = document.querySelectorAll('.lamina-peso');
+            let somaPesoLaminas = 0;
+
+            pesoInputs.forEach(input => {
+                const val = parseFloat(input.value);
+                if (!isNaN(val) && val > 0) {
+                    somaPesoLaminas += val;
+                }
+            });
+
+            const taxaQuebra = parseFloat(document.getElementById('taxaQuebra').value) || 0;
+            const precoKg = parseFloat(document.getElementById('precoKg').value) || 0;
+
+            // Peso Bruto Estimado
+            const pesoBrutoCalculado = taxaQuebra < 100 ? somaPesoLaminas / (1 - (taxaQuebra / 100)) : somaPesoLaminas;
+            const valorTotalBeneficiamento = somaPesoLaminas * precoKg;
+
+            // Update Form Indicators Realtime
+            document.getElementById('labelPesoLiquidoEstimado').innerText = `${formatNumber(somaPesoLaminas)} kg`;
+            document.getElementById('summaryPesoTotal').innerText = `${formatNumber(somaPesoLaminas)} kg`;
+            document.getElementById('summaryValorTotal').innerText = formatCurrency(valorTotalBeneficiamento);
+        }
+
+        function openFormModal(loteId = null) {
+            const modal = document.getElementById('formModal');
+            const modalTitle = document.getElementById('modalTitle');
+            const form = document.getElementById('loteForm');
+            const container = document.getElementById('laminasContainer');
+
+            container.innerHTML = '';
+            form.reset();
+
+            if (loteId) {
+                // Editing mode
+                const lote = lotes.find(l => l.id === loteId);
+                if (!lote) return;
+
+                modalTitle.innerHTML = `<i class="fa-solid fa-pen-to-square text-amber-400"></i> Editar Lote (${lote.id})`;
+                document.getElementById('loteId').value = lote.id;
+                document.getElementById('apicultor').value = lote.apicultor;
+                document.getElementById('dataEntrada').value = lote.dataEntrada;
+                document.getElementById('precoKg').value = lote.precoKg;
+                document.getElementById('taxaQuebra').value = lote.taxaQuebra;
+                document.getElementById('observacoes').value = lote.observacoes || '';
+
+                if (lote.laminas && lote.laminas.length > 0) {
+                    lote.laminas.forEach(item => {
+                        addTipoLaminaRow(item.tipo, item.peso, item.dimensoes);
+                    });
+                } else {
+                    addTipoLaminaRow('Ninho');
+                }
+            } else {
+                // Creation mode
+                modalTitle.innerHTML = `<i class="fa-solid fa-plus text-amber-400"></i> Cadastrar Novo Lote de Cera`;
+                document.getElementById('loteId').value = '';
+                document.getElementById('dataEntrada').value = new Date().toISOString().split('T')[0];
+                addTipoLaminaRow('Ninho');
+            }
+
+            modal.classList.remove('hidden');
+            calculateTotals();
+        }
+
+        function closeFormModal() {
+            document.getElementById('formModal').classList.add('hidden');
+        }
+
+        // Save Lote Handler (Creates or Updates)
+        function handleSaveLote(e) {
+            e.preventDefault();
+
+            const loteId = document.getElementById('loteId').value;
+            const apicultor = document.getElementById('apicultor').value.trim();
+            const dataEntrada = document.getElementById('dataEntrada').value;
+            const precoKg = parseFloat(document.getElementById('precoKg').value) || 0;
+            const taxaQuebra = parseFloat(document.getElementById('taxaQuebra').value) || 0;
+            const observacoes = document.getElementById('observacoes').value.trim();
+
+            // Collect Lamina Rows
+            const rows = document.querySelectorAll('.lamina-row');
+            const laminas = [];
+
+            rows.forEach(row => {
+                const tipo = row.querySelector('.lamina-tipo').value;
+                const peso = parseFloat(row.querySelector('.lamina-peso').value) || 0;
+                const dimensoes = row.querySelector('.lamina-dimensoes').value;
+
+                if (peso > 0) {
+                    laminas.push({ tipo, peso, dimensoes });
+                }
+            });
+
+            if (laminas.length === 0) {
+                alert('Por favor, adicione pelo menos um tipo de lâmina com peso superior a 0 kg.');
+                return;
+            }
+
+            if (loteId) {
+                // Update existing lote
+                const index = lotes.findIndex(l => l.id === loteId);
+                if (index !== -1) {
+                    lotes[index] = {
+                        ...lotes[index],
+                        apicultor,
+                        dataEntrada,
+                        precoKg,
+                        taxaQuebra,
+                        observacoes,
+                        laminas
+                    };
+                    showToast(`Lote ${loteId} atualizado com sucesso!`);
+                }
+            } else {
+                // Create new lote ID
+                const nextNum = lotes.length > 0 ? Math.max(...lotes.map(l => parseInt(l.id.replace('LOT-', '')) || 1000)) + 1 : 1001;
+                const newId = `LOT-${nextNum}`;
+
+                const newLote = {
+                    id: newId,
+                    apicultor,
+                    dataEntrada,
+                    precoKg,
+                    taxaQuebra,
+                    observacoes,
+                    laminas
+                };
+
+                lotes.unshift(newLote);
+                showToast(`Lote ${newId} cadastrado com sucesso!`);
+            }
+
+            saveLotesToStorage();
+            closeFormModal();
+        }
+
+        function deleteLote(id) {
+            if (confirm(`Tem certeza que deseja excluir o lote ${id}?`)) {
+                lotes = lotes.filter(l => l.id !== id);
+                saveLotesToStorage();
+                showToast(`Lote ${id} removido.`);
+            }
+        }
+
+        function openDetailsModal(loteId) {
+            const lote = lotes.find(l => l.id === loteId);
+            if (!lote) return;
+
+            activeDetailLote = lote;
+            document.getElementById('detailLoteId').innerText = lote.id;
+
+            const pesoTotal = lote.laminas.reduce((acc, i) => acc + (parseFloat(i.peso) || 0), 0);
+            const pesoBrutoCalculado = lote.taxaQuebra < 100 ? pesoTotal / (1 - (lote.taxaQuebra / 100)) : pesoTotal;
+            const perda = pesoBrutoCalculado - pesoTotal;
+            const valorTotal = pesoTotal * (lote.precoKg || 0);
+
+            let laminasHtml = lote.laminas.map(item => `
+                <tr class="border-b border-slate-100">
+                    <td class="py-2 font-medium">${item.tipo}</td>
+                    <td class="py-2 text-slate-500">${item.dimensoes}</td>
+                    <td class="py-2 text-right font-bold text-slate-800">${formatNumber(item.peso)} kg</td>
+                </tr>
+            `).join('');
+
+            document.getElementById('detailsContent').innerHTML = `
+                <div class="grid grid-cols-2 gap-4 pb-4 border-b border-slate-100">
+                    <div>
+                        <span class="text-xs text-slate-400 block">Apicultor</span>
+                        <strong class="text-base text-slate-800">${lote.apicultor}</strong>
+                    </div>
+                    <div>
+                        <span class="text-xs text-slate-400 block">Data da Entrada</span>
+                        <strong class="text-base text-slate-800">${formatDate(lote.dataEntrada)}</strong>
+                    </div>
+                </div>
+
+                <div class="my-4">
+                    <h4 class="font-bold text-xs uppercase text-slate-500 tracking-wider mb-2">Especificação das Lâminas</h4>
+                    <table class="w-full text-left text-xs">
+                        <thead>
+                            <tr class="text-slate-400 border-b border-slate-200">
+                                <th class="py-1">Tipo</th>
+                                <th class="py-1">Medida</th>
+                                <th class="py-1 text-right">Peso Lote</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${laminasHtml}
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="bg-amber-50 p-4 rounded-xl border border-amber-100 space-y-2 text-xs">
+                    <div class="flex justify-between">
+                        <span class="text-slate-600">Peso Bruto Estimado:</span>
+                        <span class="font-semibold">${formatNumber(pesoBrutoCalculado)} kg</span>
+                    </div>
+                    <div class="flex justify-between text-amber-800">
+                        <span>Desconto Quebra (${lote.taxaQuebra}%):</span>
+                        <span>- ${formatNumber(perda)} kg</span>
+                    </div>
+                    <div class="flex justify-between text-emerald-700 font-bold text-sm pt-1 border-t border-amber-200/60">
+                        <span>Peso Líquido Retornado:</span>
+                        <span>${formatNumber(pesoTotal)} kg</span>
+                    </div>
+                    <div class="flex justify-between text-slate-800 font-bold text-sm">
+                        <span>Valor Total Beneficiamento:</span>
+                        <span>${formatCurrency(valorTotal)}</span>
+                    </div>
+                </div>
+
+                ${lote.observacoes ? `
+                    <div class="pt-2">
+                        <span class="text-xs text-slate-400 block mb-1 font-semibold">Observações</span>
+                        <p class="text-xs bg-slate-50 p-2.5 rounded-lg text-slate-600 border border-slate-100">${lote.observacoes}</p>
+                    </div>
+                ` : ''}
+            `;
+
+            document.getElementById('detailsModal').classList.remove('hidden');
+        }
+
+        function closeDetailsModal() {
+            document.getElementById('detailsModal').classList.add('hidden');
+        }
+
+        function shareWhatsApp() {
+            if (!activeDetailLote) return;
+            const l = activeDetailLote;
+            const pesoTotal = l.laminas.reduce((acc, i) => acc + (parseFloat(i.peso) || 0), 0);
+            const valorTotal = pesoTotal * (l.precoKg || 0);
+
+            let msg = `*CERA TECH - COMPROVANTE DE LOTE*\n`;
+            msg += `*Lote:* ${l.id}\n`;
+            msg += `*Apicultor:* ${l.apicultor}\n`;
+            msg += `*Data:* ${formatDate(l.dataEntrada)}\n\n`;
+            msg += `*LÂMINAS BENEFICIADAS:*\n`;
+            
+            l.laminas.forEach(item => {
+                msg += `• ${item.tipo} (${item.dimensoes}): ${formatNumber(item.peso)} kg\n`;
+            });
+
+            msg += `\n*Peso Líquido Total:* ${formatNumber(pesoTotal)} kg\n`;
+            msg += `*Taxa Quebra/Impurezas:* ${l.taxaQuebra}%\n`;
+            msg += `*Valor Beneficiamento:* ${formatCurrency(valorTotal)}\n`;
+
+            const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`;
+            window.open(url, '_blank');
+        }
+
+        function printThermalEtiqueta() {
+            if (!activeDetailLote) return;
+            const l = activeDetailLote;
+            const pesoTotal = l.laminas.reduce((acc, i) => acc + (parseFloat(i.peso) || 0), 0);
+
+            const printArea = document.getElementById('printArea');
+            printArea.innerHTML = `
+                <div style="text-align: center; border-bottom: 1px dashed #000; padding-bottom: 8px; margin-bottom: 8px;">
+                    <h2 style="font-size: 14px; font-weight: bold; margin: 0;">CERA TECH - BENEFICIAMENTO</h2>
+                    <p style="margin: 2px 0;">Comprovante de Lote Cera Alveolada</p>
+                </div>
+                <div>
+                    <p><strong>LOTE:</strong> ${l.id}</p>
+                    <p><strong>CLIENTE:</strong> ${l.apicultor}</p>
+                    <p><strong>DATA:</strong> ${formatDate(l.dataEntrada)}</p>
+                </div>
+                <div style="border-top: 1px dashed #000; border-bottom: 1px dashed #000; margin: 8px 0; padding: 6px 0;">
+                    <p style="font-weight: bold; text-transform: uppercase;">Itens Beneficiados:</p>
+                    ${l.laminas.map(i => `<p style="display:flex; justify-content:space-between;"><span>${i.tipo} (${i.dimensoes})</span> <span>${formatNumber(i.peso)} kg</span></p>`).join('')}
+                </div>
+                <div>
+                    <p style="font-size: 13px;"><strong>TOTAL LÍQUIDO:</strong> ${formatNumber(pesoTotal)} kg</p>
+                    <p style="font-size: 13px;"><strong>VALOR TOTAL:</strong> ${formatCurrency(pesoTotal * l.precoKg)}</p>
+                </div>
+                <div style="text-align: center; margin-top: 12px; font-size: 10px;">
+                    <p>Obrigado pela preferência!</p>
+                </div>
+            `;
+
+            window.print();
+        }
+
+        // Navigation Tabs
+        function switchTab(tab) {
+            const btnLotes = document.getElementById('tabLotesBtn');
+            const btnNovo = document.getElementById('tabNovoBtn');
+
+            if (tab === 'lotes') {
+                btnLotes.className = "flex-1 sm:flex-none px-4 py-2 rounded-lg text-sm font-semibold transition bg-white text-amber-700 shadow-sm";
+                btnNovo.className = "flex-1 sm:flex-none px-4 py-2 rounded-lg text-sm font-semibold transition hover:text-amber-700 text-slate-600";
+            }
+        }
+
+        // Global Statistics
+        function updateStats() {
+            const totalLotes = lotes.length;
+            let totalBruto = 0;
+            let totalLaminas = 0;
+            let totalFaturamento = 0;
+
+            lotes.forEach(lote => {
+                const pesoLaminasLote = lote.laminas.reduce((acc, i) => acc + (parseFloat(i.peso) || 0), 0);
+                const brutoLote = lote.taxaQuebra < 100 ? pesoLaminasLote / (1 - (lote.taxaQuebra / 100)) : pesoLaminasLote;
+                const valorLote = pesoLaminasLote * (lote.precoKg || 0);
+
+                totalLaminas += pesoLaminasLote;
+                totalBruto += brutoLote;
+                totalFaturamento += valorLote;
+            });
+
+            document.getElementById('statTotalLotes').innerText = totalLotes;
+            document.getElementById('statTotalPeso').innerText = `${formatNumber(totalBruto)} kg`;
+            document.getElementById('statTotalLaminas').innerText = `${formatNumber(totalLaminas)} kg`;
+            document.getElementById('statTotalValor').innerText = formatCurrency(totalFaturamento);
+        }
+
+        // Export/Import System Data
+        function exportData() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(lotes, null, 2));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", `backup_cera_tech_${new Date().toISOString().split('T')[0]}.json`);
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+        }
+
+        function importData(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const imported = JSON.parse(e.target.result);
+                    if (Array.isArray(imported)) {
+                        lotes = imported;
+                        saveLotesToStorage();
+                        showToast('Dados importados com sucesso!');
+                    } else {
+                        alert('Formato de arquivo JSON inválido.');
+                    }
+                } catch(err) {
+                    alert('Erro ao carregar o arquivo JSON.');
+                }
+            };
+            reader.readAsText(file);
+        }
+    </script>
+</body>
+</html>
