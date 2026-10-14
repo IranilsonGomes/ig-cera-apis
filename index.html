@@ -68,10 +68,11 @@ td.n,th.n{text-align:right}
 [hidden]{display:none!important}
 #inst{margin-left:auto;background:#2b2412;color:#fff;border:0;border-radius:6px;padding:8px 14px;font:700 17px "Barlow Condensed",Arial,sans-serif;cursor:pointer}
 .ios{background:var(--card);border-bottom:1px solid var(--line);padding:8px 16px;font-size:15px;display:flex;gap:10px;align-items:center}
+.hd h1{flex:1}#inst{margin-left:0!important}.sy{font:700 16px "Barlow Condensed",Arial,sans-serif;color:#2b2412;white-space:nowrap}.sy.err{opacity:.7}
 </style>
 </head>
 <body>
-<header><div class="hd"><img id="lg" class="lg" alt="Logo"><h1 id="ttl"></h1><button id="inst" hidden>Instalar app</button></div><nav id="nav"></nav></header>
+<header><div class="hd"><img id="lg" class="lg" alt="Logo"><h1 id="ttl"></h1><span id="sy" class="sy" hidden></span><button id="inst" hidden>Instalar app</button></div><nav id="nav"></nav></header>
 <div id="ios" class="ios" hidden><span>Para instalar: toque em <b>Compartilhar</b> e depois em <b>Adicionar à Tela de Início</b>.</span><button class="s" onclick="this.parentNode.hidden=true">OK</button></div>
 <main id="m"></main>
 <div id="pa"></div>
@@ -81,6 +82,7 @@ const LOGO='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAANwAAADcCAYAAAAbWs+BAA
 let S={cfg:{empresa:'IG Cera Alveolada',tel:'',perda:8},ap:[],
 tipos:[{id:1,nome:'Ninho',larg:410,comp:205,pesoL:45},{id:2,nome:'Melgueira',larg:410,comp:140,pesoL:30},{id:3,nome:'Melgueirão',larg:410,comp:170,pesoL:38}],
 rec:[],ord:[],seq:{rec:0,ord:0,id:10}};
+const DEF=JSON.stringify(S);
 try{const r=localStorage.getItem(K);if(r)S=Object.assign(S,JSON.parse(r))}catch(e){}
 S.ord=S.ord.map(o=>{if(o.kg===undefined){o.kg=(o.pacotes||0)*(o.laminas||0)*(o.pesoL||0)/1000;o.pk=o.status=='Concluído'?[{qtd:o.pacotes,peso:o.laminas*o.pesoL/1000,laminas:o.laminas}]:[]}o.pk=Array.isArray(o.pk)?o.pk:[];return o});
 let tab='dash',pend=null,msg='',edR=null,edO=null,pk=null,pre=null,edA=null,fl={de:'',ate:'',cid:'',loc:''};
@@ -104,8 +106,10 @@ const num=v=>parseFloat(String(v).replace(',','.'))||0;
 const kg=v=>(Math.round(v*1000)/1000).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:3})+' kg';
 const dt=d=>d?d.split('-').reverse().join('/'):'';
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const save=()=>{try{localStorage.setItem(K,JSON.stringify(S))}catch(e){msg='Não foi possível salvar neste navegador. Use o backup.'}};
-const nid=()=>++S.seq.id;
+const persist=()=>{try{localStorage.setItem(K,JSON.stringify(S))}catch(e){msg='Não foi possível salvar neste navegador. Use o backup.'}};
+const save=()=>{persist();if(SY)push()};
+const nid=()=>Date.now()*1000+Math.floor(Math.random()*1000);
+const nextN=c=>S.seq[c]=Math.max(S.seq[c]||0,...S[c].map(x=>x.n||0))+1;
 const apN=id=>(S.ap.find(a=>a.id==id)||{nome:'(removido)'}).nome;
 const tpN=id=>(S.tipos.find(t=>t.id==id)||{nome:'(removido)'}).nome;
 const perdaF=()=>1-Math.min(S.cfg.perda,90)/100;
@@ -171,7 +175,7 @@ function addRec(){
  let vp=0;if(f){vp=$('rG').value.trim()?num($('rG').value):p*pr}
  const d={data:$('rD').value||hoje(),ap:+a,peso:p,preco:pr,forma:f,valorPago:vp,obs:$('rO').value};
  if(edR){Object.assign(S.rec.find(x=>x.id==edR),d);edR=null;msg='Recebimento alterado. Reenvie o recibo se necessário.'}
- else{S.rec.push({id:nid(),n:++S.seq.rec,...d});msg='Recebimento salvo. Envie o recibo pelo botão WhatsApp.'}
+ else{S.rec.push({id:nid(),n:nextN('rec'),...d});msg='Recebimento salvo. Envie o recibo pelo botão WhatsApp.'}
  save();render();
 }
 function reciboTxt(r){
@@ -227,7 +231,7 @@ function addOrd(){
  const d={ap:+$('oA').value,tipo:+$('oT').value,kg:num($('oK').value)};
  if(!d.ap||!d.tipo||d.kg<=0){msg='Escolha o apicultor, o tipo e informe os quilos.';return render()}
  if(edO){Object.assign(S.ord.find(x=>x.id==edO),d);edO=null;msg='Ordem alterada.'}
- else{S.ord.push({id:nid(),n:++S.seq.ord,data:hoje(),status:'Na fila',pk:[],...d});pre=null;msg='Ordem adicionada à fila.'}
+ else{S.ord.push({id:nid(),n:nextN('ord'),data:hoje(),status:'Na fila',pk:[],...d});pre=null;msg='Ordem adicionada à fila.'}
  save();render();
 }
 function ini(id){const o=S.ord.find(x=>x.id==id);o.status='Em produção';o.dtIni=hoje();save();msg='Produção iniciada. Use "Msg início" para avisar o apicultor.';render()}
@@ -299,7 +303,7 @@ function cfg(){
  <div class="card"><h2>Tipos de lâmina</h2><p class="mut">Medidas de exemplo: confira e ajuste conforme o seu molde. Elas saem nas etiquetas.</p><div class="tw"><table><tr><th>Tipo</th><th>Largura mm</th><th>Comprimento mm</th><th></th></tr>
  ${S.tipos.map(t=>`<tr><td><input value="${esc(t.nome)}" onchange="upT(${t.id},'nome',this.value)"></td><td><input value="${t.larg}" onchange="upT(${t.id},'larg',this.value)"></td><td><input value="${t.comp}" onchange="upT(${t.id},'comp',this.value)"></td><td>${delB('tipos',t.id)}</td></tr>`).join('')}</table></div>
  <p><button class="s" onclick="addT()">Adicionar tipo (ex.: Meia melgueira)</button></p></div>
- <div class="card"><h2>Backup</h2><p class="mut">Os dados ficam salvos neste navegador. Gere o backup e guarde o texto em local seguro; para restaurar, cole e use Restaurar.</p>
+ ${syncCard()}${clrCard()}<div class="card"><h2>Backup</h2><p class="mut">Os dados ficam salvos neste navegador. Gere o backup e guarde o texto em local seguro; para restaurar, cole e use Restaurar.</p>
  <textarea id="bk" rows="4"></textarea><p class="act"><button class="s" onclick="$('bk').value=JSON.stringify(S)">Gerar backup</button><button class="s" onclick="rest()">Restaurar</button></p></div>`;
 }
 function saveCfg(){S.cfg.empresa=$('cE').value||S.cfg.empresa;S.cfg.perda=Math.min(num($('cP').value),90);S.cfg.preco=num($('cV').value)||8;save();msg='Configurações salvas.';render()}
@@ -307,6 +311,96 @@ function upT(id,k,v){const t=S.tipos.find(x=>x.id==id);t[k]=k=='nome'?v:num(v);s
 function addT(){S.tipos.push({id:nid(),nome:'Novo tipo',larg:410,comp:140,pesoL:30});save();render()}
 function rest(){try{const d=JSON.parse($('bk').value);if(!d.cfg||!d.rec)throw 0;S=d;save();msg='Backup restaurado. Recarregue a página.'}catch(e){msg='Backup inválido: cole o texto completo gerado pelo sistema.'}render()}
 render();calcV();
+let SY=null;try{SY=JSON.parse(localStorage.getItem('cera_sync')||'null')}catch(e){}
+let ES=null,snap={},dirty=new Set(),ch=false,late=false,pt=null;
+const COLS=['ap','rec','ord','tipos'];
+const J=v=>JSON.stringify(v,(k,x)=>x&&typeof x=='object'&&!Array.isArray(x)?Object.keys(x).sort().reduce((o,y)=>(o[y]=x[y],o),{}):x);
+const ent=v=>Array.isArray(v)?v.map((x,i)=>[String(i),x]).filter(e=>e[1]):Object.entries(v||{});
+const base=()=>SY.url+'/empresas/'+SY.cod;
+function keyMap(){const m={};COLS.forEach(c=>S[c].forEach(x=>m[c+'/'+x.id]=J(x)));m.cfg=J(S.cfg);return m}
+function sy(s){const e=$('sy');if(!e)return;e.hidden=!SY;e.textContent=s=='on'?'● Sincronizado':'○ Sem conexão';e.className='sy '+s}
+function blank(){S=JSON.parse(DEF);S.cfg.preco=8}
+function refresh(){const a=document.activeElement;if(a&&/INPUT|SELECT|TEXTAREA/.test(a.tagName)&&$('m').contains(a))late=true;else render()}
+addEventListener('focusout',()=>{if(late)setTimeout(()=>{const a=document.activeElement;if(!a||!/INPUT|SELECT|TEXTAREA/.test(a.tagName)){late=false;render()}},250)});
+function applyKey(k,v){
+ const[c,id]=k.split('/');
+ if(c=='cfg'){if(v&&!dirty.has(k)){const n={...S.cfg,...v};if(J(n)!=J(S.cfg)){S.cfg=n;ch=true}snap.cfg=J(S.cfg)}return}
+ if(!COLS.includes(c)||id===undefined)return;
+ const i=S[c].findIndex(x=>x.id==id);
+ if(v==null){if(i>=0&&!dirty.has(k)){S[c].splice(i,1);ch=true}if(!dirty.has(k))delete snap[k];return}
+ if(typeof v!='object')return;
+ if(c=='ord')v.pk=Array.isArray(v.pk)?v.pk:Object.values(v.pk||{});
+ v.id=v.id??+id;
+ if(i<0){S[c].push(v);ch=true;snap[k]=J(v)}
+ else if(!dirty.has(k)){if(J(S[c][i])!=J(v)){S[c][i]=v;ch=true}snap[k]=J(S[c][i])}
+}
+function full(d){
+ const cur=keyMap(),first=!SY.init,seen=new Set();
+ dirty=new Set(first?[]:Object.keys(cur).filter(k=>cur[k]!==snap[k]));
+ if(d){
+  if(first&&!S.ap.length&&!S.rec.length&&!S.ord.length&&d.tipos){S.tipos=[];ch=true}
+  for(const c of COLS)for(const[k,v]of ent(d[c])){seen.add(c+'/'+k);applyKey(c+'/'+k,v)}
+  if(d.cfg){seen.add('cfg');applyKey('cfg',d.cfg)}
+  if(!first)Object.keys(snap).forEach(k=>{if(!seen.has(k)&&!dirty.has(k))applyKey(k,null)});
+ }else if(!first&&Object.keys(snap).length){blank();snap={};ch=true}
+ dirty=new Set();
+ if(!SY.init){SY.init=true;localStorage.setItem('cera_sync',JSON.stringify(SY))}
+}
+function at(p,v){
+ const s=p.split('/').filter(Boolean);
+ if(s.length==1&&COLS.includes(s[0])){if(v==null)Object.keys(snap).filter(k=>k.startsWith(s[0]+'/')).forEach(k=>applyKey(k,null));else ent(v).forEach(([k,x])=>applyKey(s[0]+'/'+k,x))}
+ else if(s.length>=2)applyKey(s[0]+'/'+s[1],s.length==2?v:null)
+ else if(s[0]=='cfg')applyKey('cfg',v);
+}
+function ev(m,isPatch){
+ ch=false;
+ if(m.path=='/'&&!isPatch)full(m.data);
+ else if(isPatch&&m.data)Object.keys(m.data).forEach(k=>at((m.path=='/'?'':m.path+'/')+k,m.data[k]));
+ else at(m.path,m.data);
+ if(ch){persist();refresh()}
+ if(m.path=='/'&&!isPatch)doPush();
+}
+function connect(){
+ if(!SY)return;if(ES)ES.close();sy('err');
+ ES=new EventSource(base()+'.json');
+ ES.onopen=()=>sy('on');ES.onerror=()=>sy('err');
+ ES.addEventListener('put',e=>ev(JSON.parse(e.data)));
+ ES.addEventListener('patch',e=>ev(JSON.parse(e.data),1));
+ ES.addEventListener('cancel',()=>{sy('err');msg='Sincronização recusada pelo banco: confira as regras do Firebase.';render()});
+}
+function push(){clearTimeout(pt);pt=setTimeout(doPush,300)}
+async function doPush(){
+ if(!SY||!SY.init)return;
+ const cur=keyMap(),p={};let n=0;
+ for(const k in cur)if(cur[k]!==snap[k]){p[k]=JSON.parse(cur[k]);n++}
+ for(const k in snap)if(!(k in cur)){p[k]=null;n++}
+ if(!n)return;
+ try{const r=await fetch(base()+'.json',{method:'PATCH',body:JSON.stringify(p)});if(!r.ok)throw 0;for(const k in p){if(p[k]===null)delete snap[k];else snap[k]=cur[k]}sy('on')}catch(e){sy('err')}
+}
+function syncCard(){
+ return `<div class="card"><h2>Sincronização entre aparelhos</h2>
+ ${SY?`<p>Ativa com o código <b>${esc(SY.cod)}</b>. Os dados são enviados e recebidos automaticamente.</p><p class="act"><button class="s" onclick="syncOff()">Desligar neste aparelho</button></p>`
+ :`<p class="mut">Use o mesmo endereço e o mesmo código em todos os aparelhos (passo a passo no LEIA-ME).</p><div class="row"><div><label>Endereço do Firebase</label><input id="sU" placeholder="https://seu-projeto-default-rtdb.firebaseio.com"></div><div><label>Código de acesso (12+ letras/números)</label><input id="sC"></div><div><button class="b" onclick="syncOn()">Ativar</button></div></div>`}</div>`;
+}
+function syncOn(){
+ const u=$('sU').value.trim().replace(/\/+$/,''),c=$('sC').value.trim();
+ if(!/^https:\/\/[\w.-]+\.(firebaseio\.com|firebasedatabase\.app)$/.test(u)){msg='Endereço inválido. Copie exatamente o endereço do Realtime Database.';return render()}
+ if(!/^[A-Za-z0-9_-]{12,}$/.test(c)){msg='O código precisa ter 12 ou mais letras e números, sem espaços.';return render()}
+ SY={url:u,cod:c,init:false};snap={};localStorage.setItem('cera_sync',JSON.stringify(SY));msg='Sincronização ativada.';connect();render();
+}
+function syncOff(){if(ES)ES.close();ES=null;SY=null;snap={};localStorage.removeItem('cera_sync');sy('off');msg='Sincronização desligada neste aparelho.';render()}
+function clrCard(){
+ return `<div class="card"><h2>Limpar dados</h2><p class="mut">Apaga cadastros, recebimentos, ordens e financeiro. Gere o backup antes. Isso não pode ser desfeito.</p><p class="act"><button class="s x" onclick="clr(0)">${pend=='clr0'?'Confirmar: apagar neste aparelho':'Limpar dados deste aparelho'}</button>${SY?`<button class="s x" onclick="clr(1)">${pend=='clr1'?'Confirmar: apagar em TODOS os aparelhos':'Limpar dados em todos os aparelhos'}</button>`:''}</p>${SY?'<p class="mut">"Deste aparelho" também desliga a sincronização aqui, e os outros aparelhos continuam com os dados.</p>':''}</div>`;
+}
+async function clr(m){
+ if(pend!='clr'+m){pend='clr'+m;return render()}
+ pend=null;
+ if(m==1&&SY){try{await fetch(base()+'.json',{method:'DELETE'})}catch(e){msg='Sem conexão: não foi possível apagar na nuvem.';return render()}}
+ if(m==0&&SY){if(ES)ES.close();ES=null;SY=null;localStorage.removeItem('cera_sync');sy('off')}
+ blank();snap={};edR=edO=pk=pre=edA=null;persist();msg='Dados apagados.';render();
+}
+if(SY)connect();
+addEventListener('online',()=>{if(SY)connect()});
 let dp=null;
 addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;$('inst').hidden=false});
 $('inst').onclick=async()=>{if(!dp)return;dp.prompt();await dp.userChoice;dp=null;$('inst').hidden=true};
