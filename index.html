@@ -3,6 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#f0c24b">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="IG Cera">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png">
 <title>IG Cera Alveolada</title>
 <style>
 :root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
@@ -58,10 +65,14 @@ td.n,th.n{text-align:right}
 .b.sm{padding:5px 10px;font-size:16px}.tag.p{background:#3b7bd1;color:#fff;border-color:#3b7bd1}
 @media print{.lb .lh{display:flex;align-items:center;gap:2mm;border-bottom:1.5px solid #000;padding-bottom:1mm}.lb .lh h4{border:0;padding:0}.lb img{height:14mm;width:14mm}}
 .tag.ok{background:var(--ok);color:var(--acb);border-color:var(--ok)}
+[hidden]{display:none!important}
+#inst{margin-left:auto;background:#2b2412;color:#fff;border:0;border-radius:6px;padding:8px 14px;font:700 17px "Barlow Condensed",Arial,sans-serif;cursor:pointer}
+.ios{background:var(--card);border-bottom:1px solid var(--line);padding:8px 16px;font-size:15px;display:flex;gap:10px;align-items:center}
 </style>
 </head>
 <body>
-<header><div class="hd"><img id="lg" class="lg" alt="Logo"><h1 id="ttl"></h1></div><nav id="nav"></nav></header>
+<header><div class="hd"><img id="lg" class="lg" alt="Logo"><h1 id="ttl"></h1><button id="inst" hidden>Instalar app</button></div><nav id="nav"></nav></header>
+<div id="ios" class="ios" hidden><span>Para instalar: toque em <b>Compartilhar</b> e depois em <b>Adicionar à Tela de Início</b>.</span><button class="s" onclick="this.parentNode.hidden=true">OK</button></div>
 <main id="m"></main>
 <div id="pa"></div>
 <script>
@@ -164,8 +175,7 @@ function addRec(){
  save();render();
 }
 function reciboTxt(r){
- const f=stPg(r);
- return `*${S.cfg.empresa}*\n*RECIBO DE CERA BRUTA Nº ${r.n}*\n\nApicultor: ${apN(r.ap)}\nData: ${dt(r.data)}\nPeso entregue: *${kg(r.peso)}*${r.obs?'\nObs.: '+r.obs:''}\n\nValor do serviço: ${R(valor(r))} (${R(r.preco)}/kg)\nPagamento: ${f}${pagoV(r)?' · '+R(pagoV(r))+' em '+r.forma:''}${f!='Pago'?'\nFalta pagar: '+R(valor(r)-pagoV(r)):''}\n\nTotal de cera bruta em seu nome: ${kg(recebido(r.ap))}\n\nObrigado pela confiança! 🐝`;
+ return `*${S.cfg.empresa}*\n*RECIBO DE CERA BRUTA Nº ${r.n}*\n\nApicultor: ${apN(r.ap)}\nData: ${dt(r.data)}\nPeso entregue: *${kg(r.peso)}*${r.obs?'\nObs.: '+r.obs:''}\n\nTotal de cera bruta em seu nome: ${kg(recebido(r.ap))}\n\nObrigado pela confiança! 🐝`;
 }
 function openWa(apId,t){
  const a=S.ap.find(x=>x.id==apId)||{};let n=String(a.tel||'').replace(/\D/g,'');if(n&&n.length<=11)n='55'+n;
@@ -180,7 +190,8 @@ function msgIni(o){
  return `*${S.cfg.empresa}*\n*PRODUÇÃO INICIADA* 🐝\n\nOlá, ${apN(o.ap)}! Sua cera entrou em produção.\n\nLote: ${o.n}\nTipo: ${tpN(o.tipo)}\nQuantidade a produzir: *${kg(o.kg)}*\nInício: ${dt(o.dtIni)}\n\nAvisaremos quando estiver pronta e empacotada.`;
 }
 function msgFim(o){
- return `*${S.cfg.empresa}*\n*PRODUÇÃO CONCLUÍDA* ✅\n\nOlá, ${apN(o.ap)}! Sua cera alveolada ficou pronta e empacotada.\n\nLote: ${o.n}\nTipo: ${tpN(o.tipo)}\nConclusão: ${dt(o.dtFim)}\n\n*Pacotes:*\n${o.pk.map(p=>`• ${p.qtd} pacote(s) de ${kg(p.peso)}${p.laminas?' ('+p.laminas+' lâminas)':''}`).join('\n')}\n\nTotal: *${nPk(o)} pacotes · ${kg(finalKg(o))}*\nSaldo de cera bruta restante: ${kg(saldo(o.ap))}\n\nJá pode retirar. Obrigado! 🐝`;
+ const rs=S.rec.filter(r=>r.ap==o.ap),vt=rs.reduce((s,r)=>s+valor(r),0),pt=rs.reduce((s,r)=>s+pagoV(r),0);
+ return `*${S.cfg.empresa}*\n*PRODUÇÃO CONCLUÍDA* ✅\n\nOlá, ${apN(o.ap)}! Sua cera alveolada ficou pronta e empacotada.\n\nLote: ${o.n}\nTipo: ${tpN(o.tipo)}\nConclusão: ${dt(o.dtFim)}\n\n*Pacotes:*\n${o.pk.map(p=>`• ${p.qtd} pacote(s) de ${kg(p.peso)}${p.laminas?' ('+p.laminas+' lâminas)':''}`).join('\n')}\n\nTotal: *${nPk(o)} pacotes · ${kg(finalKg(o))}*\n\n*Valor do serviço:* ${R(vt)}\nPago: ${R(pt)}${vt-pt>0.005?'\n*A pagar: '+R(vt-pt)+'*':' ✅ Quitado'}\n\nSaldo de cera bruta restante: ${kg(saldo(o.ap))}\n\nJá pode retirar. Obrigado! 🐝`;
 }
 function prod(){
  const o=S.ord.find(x=>x.id==edO)||{};
@@ -296,6 +307,14 @@ function upT(id,k,v){const t=S.tipos.find(x=>x.id==id);t[k]=k=='nome'?v:num(v);s
 function addT(){S.tipos.push({id:nid(),nome:'Novo tipo',larg:410,comp:140,pesoL:30});save();render()}
 function rest(){try{const d=JSON.parse($('bk').value);if(!d.cfg||!d.rec)throw 0;S=d;save();msg='Backup restaurado. Recarregue a página.'}catch(e){msg='Backup inválido: cole o texto completo gerado pelo sistema.'}render()}
 render();calcV();
+let dp=null;
+addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;$('inst').hidden=false});
+$('inst').onclick=async()=>{if(!dp)return;dp.prompt();await dp.userChoice;dp=null;$('inst').hidden=true};
+addEventListener('appinstalled',()=>{$('inst').hidden=true});
+const ios=/iphone|ipad|ipod/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+if(ios&&!(matchMedia('(display-mode: standalone)').matches||navigator.standalone))$('ios').hidden=false;
+if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
+if(navigator.storage&&navigator.storage.persist)navigator.storage.persist().catch(()=>{});
 </script>
 </body>
 </html>
